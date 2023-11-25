@@ -19,12 +19,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Yiisoft\\Telemetry\\": "src"
+      "TTM\\Telemetry\\Otel\\": "src"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Yiisoft\\Tests\\Telemetry\\": "tests"
+      "TTM\\Tests\\Telemetry\\Otel\\": "tests"
     }
   },
   "extra": {
