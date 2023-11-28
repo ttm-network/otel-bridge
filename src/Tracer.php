@@ -47,6 +47,7 @@ final class Tracer extends AbstractTracer
         );
 
         $otelSpan = $this->getTraceSpan($name, $traceKind, $startTime);
+
         $otelSpan->setAttributes($span->getAttributes());
 
         $scope = null;
@@ -71,6 +72,8 @@ final class Tracer extends AbstractTracer
         $otelSpan->updateName($span->getName());
         $otelSpan->setAttributes($span->getAttributes());
 
+        var_dump($otelSpan);
+        die();
         $otelSpan->end();
         $span->getSpanLink()->scope?->detach();
 

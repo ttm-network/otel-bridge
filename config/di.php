@@ -22,9 +22,16 @@ return [
             name: $params['ttm/telemetry-otel']['service_name']
         );
     },
-    TracerProviderInterface::class => static function (ContainerInterface $container): TracerProviderInterface {
-        return new TracerProvider($container->get(SpanProcessorInterface::class));
-    },
+    TracerProviderInterface::class => [
+        'definition' => static function (ContainerInterface $container): TracerProviderInterface {
+            return new TracerProvider($container->get(SpanProcessorInterface::class));
+        },
+        'reset' => function (): void {
+            /** @var TracerProviderInterface $this */
+            $this->forceFlush();
+            $this->shutdown();
+        }
+    ],
     SpanExporterInterface::class => static function (ContainerInterface $container) {
         return new SpanExporter($container->get(TransportFactoryInterface::class));
     },
