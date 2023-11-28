@@ -9,6 +9,7 @@ use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\SpanExporter;
 use OpenTelemetry\SDK\Common\Export\TransportFactoryInterface;
 use OpenTelemetry\SDK\Trace\SpanExporterInterface;
+use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
 use OpenTelemetry\SDK\Trace\SpanProcessorFactory;
 use OpenTelemetry\SDK\Trace\SpanProcessorInterface;
 use OpenTelemetry\SDK\Trace\TracerProvider;
@@ -46,6 +47,7 @@ return [
         return TraceContextPropagator::getInstance();
     },
     SpanProcessorInterface::class => static function (ContainerInterface $container) {
+    return new SimpleSpanProcessor($container->get(SpanExporterInterface::class));
         return (new SpanProcessorFactory())->create($container->get(SpanExporterInterface::class));
     }
 ];

@@ -46,24 +46,24 @@ final class Tracer extends AbstractTracer
             attributes: $attributes
         );
 
-        $otelSpan = $this->getTraceSpan($name, $traceKind, $startTime);
-
-        $otelSpan->setAttributes($span->getAttributes());
+        $link = $this->getTraceSpan($name, $traceKind, $startTime);
+        $link->setAttributes($span->getAttributes());
 
         $scope = null;
         if ($scoped) {
-            $scope = $otelSpan->activate();
+            $scope = $link->activate();
         }
 
-        $span->setSpanLink(new SpanLink($otelSpan, $scope));
-        $this->spans->add($span);
+        $this->spans->add($span, new SpanLink($link, $scope));
 
         return $span;
     }
 
     public function endSpan(SpanInterface $span): void
     {
-        $otelSpan = $span->getSpanLink()->span;
+        $link = $this->spans->link($span);
+        /** @var \OpenTelemetry\API\Trace\SpanInterface $otelSpan */
+        $otelSpan = $link->span;
 
         if (($status = $span->getStatus()) !== null) {
             $otelSpan->setStatus($status->code, $status->description);
@@ -72,10 +72,12 @@ final class Tracer extends AbstractTracer
         $otelSpan->updateName($span->getName());
         $otelSpan->setAttributes($span->getAttributes());
 
-        var_dump($otelSpan);
-        die();
+        foreach ($span->getEvents() as $event) {
+            $otelSpan->addEvent($event->getName(), $event->getAttributes(), $event->getEpochNanos());
+        }
+
+        $link->scope?->detach();
         $otelSpan->end();
-        $span->getSpanLink()->scope?->detach();
 
         $this->spans->remove($span);
     }
@@ -91,7 +93,7 @@ final class Tracer extends AbstractTracer
         ?TraceKind $traceKind = null,
         ?int $startTime = null
     ): mixed {
-        $traceSpan = $this->getTraceSpan($name, $traceKind, $startTime);
+        $otelSpan = $this->getTraceSpan($name, $traceKind, $startTime);
         $internalSpan = $this->createInternalSpan(
             name: $name,
             traceKind: $traceKind,
@@ -101,26 +103,26 @@ final class Tracer extends AbstractTracer
 
         $scope = null;
         if ($scoped) {
-            $scope = $traceSpan->activate();
+            $scope = $otelSpan->activate();
         }
 
         try {
             $result = $this->runScope($internalSpan, $callback);
 
             if (($status = $internalSpan->getStatus()) !== null) {
-                $traceSpan->setStatus($status->code, $status->description);
+                $otelSpan->setStatus($status->code, $status->description);
             }
 
-            $traceSpan->updateName($internalSpan->getName());
-            $traceSpan->setAttributes($internalSpan->getAttributes());
+            $otelSpan->updateName($internalSpan->getName());
+            $otelSpan->setAttributes($internalSpan->getAttributes());
 
             return $result;
         } catch (\Throwable $e) {
-            $traceSpan->recordException($e);
+            $otelSpan->recordException($e);
             throw $e;
         } finally {
-            $traceSpan->end();
             $scope?->detach();
+            $otelSpan->end();
         }
     }
 

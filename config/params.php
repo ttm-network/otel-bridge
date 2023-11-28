@@ -10,13 +10,13 @@ return [
         'drivers' => [
             'otel' => TracerFactory::class,
         ],
-        'dependencies' => [
+        'registry' => [
             'clock' => SystemClock::class
         ]
     ],
     'ttm/telemetry-otel' => [
         'service_name' => 'Yii Framework',
-        'endpoint' => $_ENV['OTEL_EXPORTER_OTLP_ENDPOINT'] ?? 'http://collector1:4318/v1/traces',
+        'endpoint' => $_ENV['OTEL_EXPORTER_OTLP_ENDPOINT'] ?? 'http://collector:4318/v1/traces',
         'protocol' => $_ENV['OTEL_EXPORTER_OTLP_PROTOCOL'] ?? 'application/json'
     ]
 ];
