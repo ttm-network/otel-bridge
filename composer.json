@@ -33,7 +33,8 @@
   },
   "extra": {
     "config-plugin-options": {
-      "source-directory": "config"
+      "source-directory": "config",
+      "vendor-override-layer": "ttm-network/telemetry"
     },
     "config-plugin": {
       "params": "params.php",
