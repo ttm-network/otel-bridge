@@ -12,6 +12,7 @@ use TTM\Telemetry\AbstractTracer;
 use TTM\Telemetry\ClockInterface;
 use TTM\Telemetry\Span;
 use TTM\Telemetry\SpanInterface;
+use TTM\Telemetry\SpanLink;
 use TTM\Telemetry\StackTraceFormatterInterface;
 use TTM\Telemetry\TraceKind;
 use Yiisoft\Injector\Injector;
@@ -45,14 +46,35 @@ final class Tracer extends AbstractTracer
             attributes: $attributes
         );
 
-        $this->spans[] = $span;
+        $otelSpan = $this->getTraceSpan($name, $traceKind, $startTime);
+        $otelSpan->setAttributes($span->getAttributes());
+
+        $scope = null;
+        if ($scoped) {
+            $scope = $otelSpan->activate();
+        }
+
+        $span->setSpanLink(new SpanLink($otelSpan, $scope));
+        $this->spans->add($span);
 
         return $span;
     }
 
     public function endSpan(SpanInterface $span): void
     {
-        // TODO: Implement endSpan() method.
+        $otelSpan = $span->getSpanLink()->span;
+
+        if (($status = $span->getStatus()) !== null) {
+            $otelSpan->setStatus($status->code, $status->description);
+        }
+
+        $otelSpan->updateName($span->getName());
+        $otelSpan->setAttributes($span->getAttributes());
+
+        $otelSpan->end();
+        $span->getSpanLink()->scope?->detach();
+
+        $this->spans->remove($span);
     }
 
     /**
