@@ -2,29 +2,57 @@
 
 declare(strict_types=1);
 
-namespace Spiral\OpenTelemetry;
+namespace TTM\Telemetry\Otel;
 
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
-use Spiral\Core\ScopeInterface;
-use Spiral\Telemetry\AbstractTracer;
-use Spiral\Telemetry\Span;
-use Spiral\Telemetry\SpanInterface;
-use Spiral\Telemetry\TraceKind;
+use TTM\Telemetry\AbstractTracer;
+use TTM\Telemetry\ClockInterface;
+use TTM\Telemetry\Span;
+use TTM\Telemetry\SpanInterface;
+use TTM\Telemetry\StackTraceFormatterInterface;
+use TTM\Telemetry\TraceKind;
+use Yiisoft\Injector\Injector;
 
 final class Tracer extends AbstractTracer
 {
     private ?\OpenTelemetry\API\Trace\SpanInterface $lastSpan = null;
 
     public function __construct(
-        ScopeInterface $scope,
+        Injector $injector,
         private readonly TracerInterface $tracer,
         private readonly TextMapPropagatorInterface $propagator,
+        private readonly ClockInterface $clock,
+        private readonly StackTraceFormatterInterface $stackTraceFormatter,
         private array $context = []
     ) {
-        parent::__construct($scope);
+        parent::__construct($injector);
+    }
+
+    public function startSpan(
+        string $name,
+        array $attributes = [],
+        bool $scoped = false,
+        ?TraceKind $traceKind = null,
+        ?int $startTime = null
+    ): SpanInterface {
+        $span = $this->createInternalSpan(
+            name: $name,
+            traceKind: $traceKind,
+            startTime: $startTime,
+            attributes: $attributes
+        );
+
+        $this->spans[] = $span;
+
+        return $span;
+    }
+
+    public function endSpan(SpanInterface $span): void
+    {
+        // TODO: Implement endSpan() method.
     }
 
     /**
@@ -39,7 +67,12 @@ final class Tracer extends AbstractTracer
         ?int $startTime = null
     ): mixed {
         $traceSpan = $this->getTraceSpan($name, $traceKind, $startTime);
-        $internalSpan = $this->createInternalSpan($name, $attributes);
+        $internalSpan = $this->createInternalSpan(
+            name: $name,
+            traceKind: $traceKind,
+            startTime: $startTime,
+            attributes: $attributes
+        );
 
         $scope = null;
         if ($scoped) {
@@ -90,9 +123,20 @@ final class Tracer extends AbstractTracer
         };
     }
 
-    private function createInternalSpan(string $name, array $attributes): SpanInterface
-    {
-        return new Span($name, $attributes);
+    private function createInternalSpan(
+        string $name,
+        ?TraceKind $traceKind,
+        ?int $startTime,
+        array $attributes
+    ): Span {
+        return new Span(
+            name: $name,
+            traceKind: $traceKind ?? TraceKind::INTERNAL,
+            clock: $this->clock,
+            stackTraceFormatter: $this->stackTraceFormatter,
+            startEpochNanos: $startTime ?? $this->clock->now(),
+            attributes: $attributes
+        );
     }
 
     private function getTraceSpan(

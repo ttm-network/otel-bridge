@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Spiral\OpenTelemetry;
+namespace TTM\Telemetry\Otel;
 
 use OpenTelemetry\SDK\Common\Time\ClockFactory;
-use Spiral\Telemetry\ClockInterface;
+use TTM\Telemetry\ClockInterface;
 
 final class SystemClock implements ClockInterface
 {

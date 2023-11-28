@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Spiral\OpenTelemetry\Trace;
+namespace TTM\Telemetry\Otel\Trace;
 
 use OpenTelemetry\SDK\Common\Future\CancellationInterface;
 use OpenTelemetry\SDK\Common\Future\ErrorFuture;
