@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TTM\Telemetry\Otel;
 
 use OpenTelemetry\API\Trace\SpanKind;
+use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
@@ -66,15 +67,12 @@ final class Tracer extends AbstractTracer
         $otelSpan = $link->span;
 
         if (($status = $span->getStatus()) !== null) {
-            $otelSpan->setStatus($status->code, $status->description);
+            $otelSpan->setStatus((string)$status->code, $status->description);
         }
 
         $otelSpan->updateName($span->getName());
+        $this->attachEvents($span, $otelSpan);
         $otelSpan->setAttributes($span->getAttributes());
-
-        foreach ($span->getEvents() as $event) {
-            $otelSpan->addEvent($event->getName(), $event->getAttributes(), $event->getEpochNanos());
-        }
 
         $link->scope?->detach();
         $otelSpan->end();
@@ -110,17 +108,18 @@ final class Tracer extends AbstractTracer
             $result = $this->runScope($internalSpan, $callback);
 
             if (($status = $internalSpan->getStatus()) !== null) {
-                $otelSpan->setStatus($status->code, $status->description);
+                $otelSpan->setStatus((string)$status->code, $status->description);
             }
-
-            $otelSpan->updateName($internalSpan->getName());
-            $otelSpan->setAttributes($internalSpan->getAttributes());
 
             return $result;
         } catch (\Throwable $e) {
-            $otelSpan->recordException($e);
+            $internalSpan->recordException($e);
             throw $e;
         } finally {
+            $otelSpan->updateName($internalSpan->getName());
+            $this->attachEvents($internalSpan, $otelSpan);
+            $otelSpan->setAttributes($internalSpan->getAttributes());
+
             $scope?->detach();
             $otelSpan->end();
         }
@@ -185,5 +184,15 @@ final class Tracer extends AbstractTracer
         }
 
         return $this->lastSpan = $spanBuilder->startSpan();
+    }
+
+    private function attachEvents(SpanInterface $span, \OpenTelemetry\API\Trace\SpanInterface $otelSpan): void
+    {
+        foreach ($span->getEvents() as $event) {
+            if ($event->getName() === 'exception') {
+                $otelSpan->setStatus(StatusCode::STATUS_ERROR);
+            }
+            $otelSpan->addEvent($event->getName(), $event->getAttributes(), $event->getEpochNanos());
+        }
     }
 }
