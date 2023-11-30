@@ -39,7 +39,8 @@
     "config-plugin": {
       "params": "params.php",
       "bootstrap": "bootstrap.php",
-      "di": "di.php"
+      "di": "di.php",
+      "events-web": "events-web.php"
     }
   },
   "config": {
