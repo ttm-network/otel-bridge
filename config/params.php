@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use TTM\Telemetry\Otel\SystemClock;
-use TTM\Telemetry\Otel\TracerFactory;
+use TTM\Telemetry\Otel\Tracer;
 
 return [
     'ttm/telemetry' => [
         'drivers' => [
-            'otel' => TracerFactory::class,
+            'otel' => Tracer::class,
         ],
         'registry' => [
             'clock' => SystemClock::class

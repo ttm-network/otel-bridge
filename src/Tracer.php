@@ -7,10 +7,10 @@ namespace TTM\Telemetry\Otel;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
-use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use TTM\Telemetry\AbstractTracer;
 use TTM\Telemetry\ClockInterface;
+use TTM\Telemetry\Context;
 use TTM\Telemetry\Span;
 use TTM\Telemetry\SpanInterface;
 use TTM\Telemetry\SpanLink;
@@ -24,13 +24,13 @@ final class Tracer extends AbstractTracer
 
     public function __construct(
         Injector $injector,
+        Context $context,
         private readonly TracerInterface $tracer,
         private readonly TextMapPropagatorInterface $propagator,
         private readonly ClockInterface $clock,
         private readonly StackTraceFormatterInterface $stackTraceFormatter,
-        private array $context = []
     ) {
-        parent::__construct($injector);
+        parent::__construct($injector, $context);
     }
 
     public function startSpan(
@@ -125,17 +125,18 @@ final class Tracer extends AbstractTracer
         }
     }
 
-    public function getContext(): array
+    #[\Override]
+    public function getContext(): Context
     {
         if ($this->lastSpan !== null) {
-            $ctx = $this->lastSpan->storeInContext(Context::getCurrent());
+            $ctx = $this->lastSpan->storeInContext(\OpenTelemetry\Context\Context::getCurrent());
             $carrier = [];
             $this->propagator->inject($carrier, null, $ctx);
 
-            return $carrier;
+            return new Context($carrier);
         }
 
-        return $this->context;
+        return parent::getContext();
     }
 
     public function convertSpanKind(?TraceKind $traceKind): int
@@ -177,9 +178,9 @@ final class Tracer extends AbstractTracer
             $spanBuilder->setStartTimestamp($startTime);
         }
 
-        if ($this->context !== []) {
+        if ($this->getContext()->current() !== []) {
             $spanBuilder->setParent(
-                $this->propagator->extract($this->context)
+                $this->propagator->extract($this->getContext()->current())
             );
         }
 
