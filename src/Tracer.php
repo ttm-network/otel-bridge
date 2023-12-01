@@ -7,10 +7,10 @@ namespace TTM\Telemetry\Otel;
 use OpenTelemetry\API\Trace\SpanKind;
 use OpenTelemetry\API\Trace\StatusCode;
 use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\Context\Context;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use TTM\Telemetry\AbstractTracer;
 use TTM\Telemetry\ClockInterface;
-use TTM\Telemetry\Context\Context;
 use TTM\Telemetry\Span;
 use TTM\Telemetry\SpanInterface;
 use TTM\Telemetry\SpanLink;
@@ -24,22 +24,23 @@ final class Tracer extends AbstractTracer
 
     public function __construct(
         Injector $injector,
-        Context $context,
         private readonly TracerInterface $tracer,
         private readonly TextMapPropagatorInterface $propagator,
         private readonly ClockInterface $clock,
         private readonly StackTraceFormatterInterface $stackTraceFormatter,
     ) {
-        parent::__construct($injector, $context);
+        parent::__construct($injector);
     }
 
     public function startSpan(
         string $name,
         array $attributes = [],
         bool $scoped = false,
+        array $context = [],
         ?TraceKind $traceKind = null,
         ?int $startTime = null
     ): SpanInterface {
+        $this->context = $context;
         $span = $this->createInternalSpan(
             name: $name,
             traceKind: $traceKind,
@@ -88,6 +89,7 @@ final class Tracer extends AbstractTracer
         callable $callback,
         array $attributes = [],
         bool $scoped = false,
+        array $context = [],
         ?TraceKind $traceKind = null,
         ?int $startTime = null
     ): mixed {
@@ -126,17 +128,17 @@ final class Tracer extends AbstractTracer
     }
 
     #[\Override]
-    public function getContext(): Context
+    public function getContext(): array
     {
         if ($this->lastSpan !== null) {
-            $ctx = $this->lastSpan->storeInContext(\OpenTelemetry\Context\Context::getCurrent());
+            $ctx = $this->lastSpan->storeInContext(Context::getCurrent());
             $carrier = [];
             $this->propagator->inject($carrier, null, $ctx);
 
-            return new Context($carrier);
+            return $carrier;
         }
 
-        return parent::getContext();
+        return $this->context;
     }
 
     public function convertSpanKind(?TraceKind $traceKind): int
@@ -148,6 +150,27 @@ final class Tracer extends AbstractTracer
             TraceKind::CONSUMER => SpanKind::KIND_CONSUMER,
             default => SpanKind::KIND_INTERNAL
         };
+    }
+
+    private function getTraceSpan(
+        string $name,
+        ?TraceKind $traceKind,
+        ?int $startTime
+    ): \OpenTelemetry\API\Trace\SpanInterface {
+        $spanBuilder = $this->tracer->spanBuilder($name)
+            ->setSpanKind($this->convertSpanKind($traceKind));
+
+        if ($startTime !== null) {
+            $spanBuilder->setStartTimestamp($startTime);
+        }
+
+        if ($this->context !== []) {
+            $spanBuilder->setParent(
+                $this->propagator->extract($this->context)
+            );
+        }
+
+        return $this->lastSpan = $spanBuilder->startSpan();
     }
 
     private function createInternalSpan(
@@ -164,27 +187,6 @@ final class Tracer extends AbstractTracer
             startEpochNanos: $startTime ?? $this->clock->now(),
             attributes: $attributes
         );
-    }
-
-    private function getTraceSpan(
-        string $name,
-        ?TraceKind $traceKind,
-        ?int $startTime
-    ): \OpenTelemetry\API\Trace\SpanInterface {
-        $spanBuilder = $this->tracer->spanBuilder($name)
-            ->setSpanKind($this->convertSpanKind($traceKind));
-
-        if ($startTime !== null) {
-            $spanBuilder->setStartTimestamp($startTime);
-        }
-
-        if ($this->context->current() !== []) {
-            $spanBuilder->setParent(
-                $this->propagator->extract($this->context->current())
-            );
-        }
-
-        return $this->lastSpan = $spanBuilder->startSpan();
     }
 
     private function attachEvents(SpanInterface $span, \OpenTelemetry\API\Trace\SpanInterface $otelSpan): void
