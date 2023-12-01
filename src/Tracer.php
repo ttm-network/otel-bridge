@@ -10,7 +10,7 @@ use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
 use TTM\Telemetry\AbstractTracer;
 use TTM\Telemetry\ClockInterface;
-use TTM\Telemetry\Context;
+use TTM\Telemetry\Context\Context;
 use TTM\Telemetry\Span;
 use TTM\Telemetry\SpanInterface;
 use TTM\Telemetry\SpanLink;
