@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use TTM\Telemetry\Otel\ContextExtractor;
 use TTM\Telemetry\Otel\SystemClock;
 use TTM\Telemetry\Otel\Tracer;
 
@@ -10,9 +11,14 @@ return [
         'drivers' => [
             'otel' => Tracer::class,
         ],
+        'context/extractor' => [
+            'extractors' => [
+                'otel' => ContextExtractor::class
+            ]
+        ],
         'registry' => [
             'clock' => SystemClock::class
-        ]
+        ],
     ],
     'ttm/telemetry-otel' => [
         'service_name' => 'Yii Framework',
