@@ -180,7 +180,7 @@ final class Tracer extends AbstractTracer
 
         if ($this->context->current() !== []) {
             $spanBuilder->setParent(
-                $this->propagator->extract($this->getContext()->current())
+                $this->propagator->extract($this->context->current())
             );
         }
 
