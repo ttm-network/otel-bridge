@@ -178,7 +178,7 @@ final class Tracer extends AbstractTracer
             $spanBuilder->setStartTimestamp($startTime);
         }
 
-        if ($this->getContext()->current() !== []) {
+        if ($this->context->current() !== []) {
             $spanBuilder->setParent(
                 $this->propagator->extract($this->getContext()->current())
             );
