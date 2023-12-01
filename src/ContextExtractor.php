@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace TTM\Telemetry\Otel;
 
 use OpenTelemetry\Context\Propagation\TextMapPropagatorInterface;
-use TTM\Telemetry\Context;
-use TTM\Telemetry\ContextExtractorInterface;
+use TTM\Telemetry\Context\Context;
+use TTM\Telemetry\Context\ContextExtractorInterface;
 
 final class ContextExtractor implements ContextExtractorInterface
 {
